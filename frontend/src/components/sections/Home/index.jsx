@@ -50,17 +50,27 @@ export const HomeSection = () => {
 
       
       {/* <IntroSection /> */}
-            <motion.p
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
-className="w-full max-w-4xl mx-auto px-6 mb-6 text-left text-sm md:text-base text-gray-400 leading-relaxed"      >
-        I'm a Business & Data Analyst combining expertise in Analytics,
-        Psychology, and Finance with a passion for data, technology, and AI.
-        I enjoy building data-driven solutions that connect technical
-        possibilities with real-world business needs.
-      </motion.p>
 
+<motion.p
+  initial={{ opacity: 0, y: 10 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ duration: 0.4, delay: 0.2 }}
+  className="relative z-50 w-full max-w-4xl mx-auto px-6 mb-6 text-left text-sm md:text-base text-gray-400 leading-relaxed"
+>
+  I'm a Business & Data Analyst combining expertise in Analytics,
+  Psychology, and Finance with a passion for data, technology, and AI.
+  I enjoy building data-driven solutions that connect technical
+  possibilities with real-world business needs.{" "}
+
+  <a
+    href="https://dennisg.onrender.com/CV_Dennis_Gloukhman.pdf"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="relative z-50 inline-block text-gray-400 hover:text-blue-400  transition-colors underline cursor-pointer"
+  >
+    Explore my CV!
+  </a>
+</motion.p>
       <ChatBox />
 
     </motion.div>

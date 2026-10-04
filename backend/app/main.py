@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from app.chatbot import Bot
 from collections import defaultdict
@@ -23,7 +23,7 @@ app.add_middleware(
 
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(  max_length=3000)
     history: list[dict] = []
 
 
@@ -53,7 +53,7 @@ def status():
 
 
 @app.post("/chat")
-def chat(request_ip: Request, request: ChatRequest):
+async def chat(request_ip: Request, request: ChatRequest):
     message_limit = 8
     client_ip = request_ip.client.host
 

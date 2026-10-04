@@ -149,7 +149,8 @@ useEffect(() => {
               </motion.div>
             </div>
           </div>
-<div className="relative flex items-center gap-2 sm:gap-3 ml-auto flex-shrink-0">            {/* Question counter */}
+<div className="relative flex items-center gap-2 sm:gap-3 ml-auto flex-shrink-0">      {/*  className="text-xs text-gray-500 text-right pr-2"  }      Question counter */}
+
              <span className="text-[10px] sm:text-xs text-gray-400 whitespace-nowrap">
         Questions: {Math.min(messageCount, messageLimit)}  / {messageLimit}
       </span>
@@ -224,6 +225,8 @@ useEffect(() => {
         <div className="relative z-10">
           <ChatInput
             input={input}
+            maxLength = {3000}
+            minLength = {1}
             setInput={setInput}
             isLoading={isLoading}
             onSubmit={handleSubmit}

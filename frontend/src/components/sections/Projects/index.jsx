@@ -114,7 +114,7 @@ export const ProjectsSection = () => {
           <div className="relative p-4 md:p-6 rounded-lg bg-white/5 border border-white/10 backdrop-blur-sm w-full flex flex-col">
 
             <h3 className="text-xl font-bold mb-2 truncate">
-              {repo.name}
+              {repo.name.replace(/_/g, ' ')}
             </h3>
             <div className="flex items-center gap-2 mb-3 text-purple-400">
           <Github className="w-4 h-4" />

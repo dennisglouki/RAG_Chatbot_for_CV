@@ -2,11 +2,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Square } from 'lucide-react';
 import { getChatConfig } from '../../../config/configLoader';
 
-export const ChatInput = ({ input, setInput, isLoading, onSubmit, onStop }) => {
+export const ChatInput = ({ input, setInput, isLoading, onSubmit, onStop, maxLength}) => {
   const chatConfig = getChatConfig();
   const placeholder = chatConfig?.inputPlaceholder || 'Ask me anything...';
   
+
+  const handleChange = (e) => {
+    const value = e.target.value;
+
+    if (value.length <= maxLength  ) {
+      setInput(value);
+    }
+  };
+
   const handleSubmit = (e) => {
+    const value = e.target.value;
     e.preventDefault();
     if (!input.trim() || isLoading) return;
     onSubmit(input.trim());
@@ -21,12 +31,16 @@ export const ChatInput = ({ input, setInput, isLoading, onSubmit, onStop }) => {
       <input
         type="text"
         value={input}
-        onChange={(e) => setInput(e.target.value)}
+        onChange=  {handleChange} //.{(e) => setInput(e.target.value)}
+        maxLength={maxLength}
         placeholder={placeholder}
         className="flex-1 min-w-0 bg-transparent text-white rounded-lg px-4 py-2 focus:outline-none placeholder-gray-400 overflow-hidden text-ellipsis whitespace-nowrap"
         disabled={isLoading}
       />
-      
+        <div className="text-xs text-gray-400 text-right pr-2">
+          {input.length} / {maxLength}
+        </div>
+
       <AnimatePresence mode="wait">
         {isLoading ? (
           <motion.button
