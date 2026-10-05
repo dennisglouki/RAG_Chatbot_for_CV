@@ -15,11 +15,9 @@ class Bot:
         self.client = genai.Client()
 
         data_folder = pathlib.Path(__file__).resolve().parent.parent / "data"
-
         self.index = faiss.read_index(
             str(data_folder / "files.index")
         )
-
         with open(data_folder / "chunks.json") as f:
             self.chunks = json.load(f)
         
@@ -84,8 +82,6 @@ class Bot:
     def execute_bot(self, question, history,k =7):
         context = self.search(question, k=k)
         prompt = self.create_prompt(question, context, history)
-        print(context)
-
         response = self.client.models.generate_content(
             model="gemini-3.8-flash",
             contents=prompt,
@@ -101,6 +97,7 @@ class Bot:
             "source": item["source"],
             "page": item["page_nr"],
             "url": item["url"],
+            "lines": item['lines'] 
             #"text": item['text'],
         }
         for i, item in enumerate(context)

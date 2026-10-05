@@ -17,5 +17,5 @@
   },
   "chat": {
     "inputPlaceholder": "Ask me anything about Dennis...",
-"initialMessage": "Hey there! 👋 I'm Dennis's AI assistant. I have access to his CV and research papers, so feel free to ask me anything!\n\n💡 For the best results, please ask your questions in English. The first response may take up to a minute while the free server wakes up. After that, responses should be much faster."  }
+"initialMessage": "Hey there! 👋 I'm Dennis's AI assistant. I have access to his CV, research papers, and projects, so feel free to ask me anything!\n\n💡 For the best results, please ask your questions in English. The first response may take up to a minute while the free server wakes up. After that, responses should be much faster."  }
 } 

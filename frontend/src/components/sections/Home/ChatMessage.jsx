@@ -92,15 +92,33 @@ const MessageSources = ({ sources }) => {
     return null;
   }
 
-  const uniqueSources = Array.from(
-    new Map(
-      sources.map((source) => [
-        `${source.source}-${source.page_nr}`,
-        source
-      ])
-    ).values()
-  );
+  // const uniqueSources = Array.from(
+  //   new Map(
+  //     sources.map((source) => [
+  //       `${source.source}-${source.page_nr}`,
+  //       source
+  //     ])
+  //   ).values()
+  // );
+const groupedSources = Object.values(
+  sources.reduce((acc, source) => {
+    const key = `${source.source}-${source.page_nr}`;
 
+    if (!acc[key]) {
+      acc[key] = {
+        ...source,
+        lines: [],
+      };
+    }
+
+    if (source.lines) {
+      acc[key].lines.push(source.lines);
+    }
+
+
+    return acc;
+  }, {})
+);
 
   return (
     <div className="mt-3 pt-3 border-t border-gray-700/50">
@@ -109,7 +127,8 @@ const MessageSources = ({ sources }) => {
       </p>
 
       <div className="flex flex-col gap-1">
-        {uniqueSources.map((source) => {
+        {/* {uniqueSources.map((source) => { */}
+        {groupedSources.map((source) => {
 
           return (
             <a
@@ -118,9 +137,18 @@ const MessageSources = ({ sources }) => {
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-400 hover:underline"
-            >
-              📄 {source.source} · p. {source.page}
-            </a>
+            // >
+            //   📄 {source.source} · p. {source.page} · l. {source.lines.join(', ')}
+            // </a>
+            >📄 {source.source} · p. {source.page_nr}
+{source.lines.length > 0 && (
+  <>
+    {' · l. '}
+    {source.lines.slice(0, 3).join(', ')}
+    {source.lines.length > 3 && '...'}
+  </>
+)}</a>
+            
           );
         })}
       </div>

@@ -58,7 +58,7 @@ async def chat(request_ip: Request, request: ChatRequest):
     client_ip = request_ip.client.host
 
     if messages_counter[client_ip] >= message_limit:
-        return {"answer": "Unfortunately, you've reached the 8-question limit. To keep the chatbot free, no further questions are available. Thanks for chatting! 😊", "message_count": messages_counter[client_ip], 'message_limit': message_limit}
+        return {"answer": "Unfortunately, you've reached the daily 8-question limit. To keep the chatbot free, no further questions are available. Thanks for chatting! 😊", "message_count": messages_counter[client_ip], 'message_limit': message_limit}
     else:
         results = chatbot.execute_bot(request.message, request.history, k=50)
         answer = results["answer"]
