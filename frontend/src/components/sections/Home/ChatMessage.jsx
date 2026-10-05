@@ -136,7 +136,7 @@ const groupedSources = Object.values(
               href={source.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-400 hover:underline"
+              className="text-blue-400 hover:underline break-words min-w-0"
             // >
             //   📄 {source.source} · p. {source.page} · l. {source.lines.join(', ')}
             // </a>
