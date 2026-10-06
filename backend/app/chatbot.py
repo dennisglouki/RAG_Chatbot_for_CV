@@ -104,9 +104,21 @@ class Bot:
         if i + 1 in response.parsed.relevant_contexts
     ]
 
+        finish_reason = None
+        if response.candidates:
+            finish_reason = response.candidates[0].finish_reason.name
+        response_meta= {
+            "model":response.model_version,
+            "input_tokens":response.usage_metadata.prompt_token_count,
+            "output_tokens":response.usage_metadata.candidates_token_count,
+            "total_tokens":response.usage_metadata.total_token_count,
+            "response_id":response.response_id,
+            "status": finish_reason}
+
         return {
             "answer": response.parsed.answer,
-            "sources": sources
+            "sources": sources,
+            "meta": response_meta
         }
 
 

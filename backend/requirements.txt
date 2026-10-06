@@ -4,3 +4,5 @@ pydantic
 numpy
 faiss-cpu
 google-genai
+sqlalchemy
+psycopg2-binary

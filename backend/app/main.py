@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from app.chatbot import Bot
 from collections import defaultdict
-
+from app.DB_communication import Database, GeoLocator
 
 
 
@@ -28,6 +28,9 @@ class ChatRequest(BaseModel):
 
 
 chatbot = Bot()
+db = Database()
+geo_locator = GeoLocator()
+
 
 messages_counter = defaultdict(int)
 
@@ -56,20 +59,34 @@ def status():
 async def chat(request_ip: Request, request: ChatRequest):
     message_limit = 8
     client_ip = request_ip.client.host
+    messages_counter = db.get_daily_request_count(client_ip)
 
-    if messages_counter[client_ip] >= message_limit:
+    if messages_counter >= message_limit:
+        results = {}
         return {"answer": "Unfortunately, you've reached the daily 8-question limit. To keep the chatbot free, no further questions are available. Thanks for chatting! 😊", "message_count": messages_counter[client_ip], 'message_limit': message_limit}
     else:
         results = chatbot.execute_bot(request.message, request.history, k=50)
         answer = results["answer"]
         sources = results["sources"] 
-        if messages_counter[client_ip] == 2:
+        
+        if messages_counter == 2:
             answer = "Wow, you're really curious! 😄 Let's grab a coffee instead of chatting here ☕. Reach out to me at dennisgloukhman@hotmail.de\n\n Back to your question:   " + answer
 
-           
-    messages_counter[client_ip] += 1
-
-
-    return {"answer": answer, "sources": sources, "message_count": messages_counter[client_ip], 'message_limit': message_limit  }
+    meta = results.get('meta', {})
+    location = geo_locator.get_location(client_ip)
+    db.store_request(
+        ip_address=request_ip.client.host,
+        question=request.message,
+        answer=results.get("answer"),
+        model=meta.get('model_version'),
+        input_tokens=meta.get('input_tokens'),
+        output_tokens=meta.get('output_tokens'),
+        total_tokens=meta.get('total_tokens'),
+        status= meta.get('status', 'No request'),
+        country= location.get('country'),
+        city= location.get('city')) 
+    
+    
+    return {"answer": answer, "sources": sources, "message_count": messages_counter, 'message_limit': message_limit  }
 
 
