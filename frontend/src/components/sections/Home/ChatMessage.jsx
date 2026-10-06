@@ -140,10 +140,10 @@ const groupedSources = Object.values(
             // >
             //   📄 {source.source} · p. {source.page} · l. {source.lines.join(', ')}
             // </a>
-            >📄 {source.source} · p. {source.page_nr}
+            >📄 {source.source} · p.{source.page}
 {source.lines.length > 0 && (
   <>
-    {' · l. '}
+    {' · l.'}
     {source.lines.slice(0, 3).join(', ')}
     {source.lines.length > 3 && '...'}
   </>

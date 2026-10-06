@@ -71,7 +71,7 @@ const ThesisTile = () => {
 
         <div className="mt-auto">
           <a
-            href="/Improving_automated_extinction_learning_through_robust_off_policy_reinforcement_learning.pdf"
+            href="/MasterThesis.pdf"
             target="_blank"
             rel="noopener noreferrer"
             className="px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 transition-colors inline-flex items-center gap-2"
