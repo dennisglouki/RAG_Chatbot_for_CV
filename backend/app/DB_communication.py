@@ -72,17 +72,44 @@ class Database:
                         city,
                     ),
                 )
-
-class GeoLocator:
     def get_location(self, ip_address):
-        response = requests.get(
-            f"https://api.ipapi.is/?q={ip_address}",
-            timeout=1
-    )
+        try:
+            response = requests.get(
+                f"https://api.ipapi.is/?q={ip_address}",
+                timeout=2
+            )
 
-        if response.status_code != 200:
+            if response.status_code != 200:
+                return {}
+
+            loc_response = response.json()
+
+            return {
+                "country": loc_response.get("country"),
+                "city": loc_response.get("city")
+            }
+
+        except requests.RequestException:
             return {}
-        else: loc_response =response.json()
-        location = {"country": loc_response.get("country"),
-                    "city": loc_response.get("city")}    
-        return location
+
+
+    def log_request(self,
+        client_ip,
+        question,
+        answer,
+        meta
+    ):
+        location = self.get_location(client_ip)
+
+        self.store_request(
+            ip_address=client_ip,
+            question=question,
+            answer=answer,
+            model=meta.get("model_version"),
+            input_tokens=meta.get("input_tokens"),
+            output_tokens=meta.get("output_tokens"),
+            total_tokens=meta.get("total_tokens"),
+            status=meta.get("status", "No request"),
+            country=location.get("country"),
+            city=location.get("city")
+        )

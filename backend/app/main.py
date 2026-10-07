@@ -1,9 +1,10 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, BackgroundTasks
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from app.chatbot import Bot
 from collections import defaultdict
-from app.DB_communication import Database, GeoLocator
+from app.DB_communication import Database
+
 
 
 
@@ -29,7 +30,6 @@ class ChatRequest(BaseModel):
 
 chatbot = Bot()
 db = Database()
-geo_locator = GeoLocator()
 
 
 messages_counter = defaultdict(int)
@@ -56,10 +56,12 @@ def status():
 
 
 @app.post("/chat")
-async def chat(request_ip: Request, request: ChatRequest):
+async def chat(request_ip: Request, request: ChatRequest, background_tasks: BackgroundTasks):
     message_limit = 8
     client_ip = request_ip.client.host
     messages_counter = db.get_daily_request_count(client_ip)
+
+
 
     if messages_counter >= message_limit:
         results = {}
@@ -73,20 +75,15 @@ async def chat(request_ip: Request, request: ChatRequest):
             answer = "Wow, you're really curious! 😄 Let's grab a coffee instead of chatting here ☕. Reach out to me at dennisgloukhman@hotmail.de\n\n Back to your question:   " + answer
 
     meta = results.get('meta', {})
-    location = geo_locator.get_location(client_ip)
-    db.store_request(
-        ip_address=request_ip.client.host,
-        question=request.message,
-        answer=results.get("answer"),
-        model=meta.get('model_version'),
-        input_tokens=meta.get('input_tokens'),
-        output_tokens=meta.get('output_tokens'),
-        total_tokens=meta.get('total_tokens'),
-        status= meta.get('status', 'No request'),
-        country= location.get('country'),
-        city= location.get('city')) 
+    background_tasks.add_task(
+        db.log_request,
+        client_ip,
+        request.message,
+        answer,
+        meta
+    )
     
-    
+    messages_counter += 1
     return {"answer": answer, "sources": sources, "message_count": messages_counter, 'message_limit': message_limit  }
 
 
