@@ -123,106 +123,106 @@ class Bot:
             return ""
 
 
-    def execute_bot(self, question, history,client_id = 'DennisCV', k =7):    
+    # def execute_bot(self, question, history,client_id = 'DennisCV', k =7):    
         
-        start_time = time.perf_counter()
-        embedded_query = self.embed_query(question)
-        print( 'embed_query:', time.perf_counter()-start_time)
+    #     start_time = time.perf_counter()
+    #     embedded_query = self.embed_query(question)
+    #     print( 'embed_query:', time.perf_counter()-start_time)
 
-        start_time = time.perf_counter()
-        context = self.search(embedded_query['embedding'], k=k, client_id=client_id)
-        print( 'search:', time.perf_counter()-start_time)
+    #     start_time = time.perf_counter()
+    #     context = self.search(embedded_query['embedding'], k=k, client_id=client_id)
+    #     print( 'search:', time.perf_counter()-start_time)
 
-        start_time = time.perf_counter()
-        prompt = self.create_prompt(question, context, history)
-        print( 'create prompt:', time.perf_counter()-start_time)
+    #     start_time = time.perf_counter()
+    #     prompt = self.create_prompt(question, context, history)
+    #     print( 'create prompt:', time.perf_counter()-start_time)
 
-        start_time = time.perf_counter()
+    #     start_time = time.perf_counter()
 
-        # response = self.client.models.generate_content(
-        #     model="gemini-3.8-flash",
-        #     contents=prompt,
-        #     config={
-        #         "system_instruction": SYSTEM_PROMPT,
-        #         "response_mime_type": "application/json",
-        #         "response_schema": ChatResponse,
-        #         "thinking_config": {
-        #         "thinking_level": "low"},
-        #     },
-        # )
+    #     # response = self.client.models.generate_content(
+    #     #     model="gemini-3.8-flash",
+    #     #     contents=prompt,
+    #     #     config={
+    #     #         "system_instruction": SYSTEM_PROMPT,
+    #     #         "response_mime_type": "application/json",
+    #     #         "response_schema": ChatResponse,
+    #     #         "thinking_config": {
+    #     #         "thinking_level": "low"},
+    #     #     },
+    #     # )
 
-        response_text = ""
-        last_chunk = None
+    #     response_text = ""
+    #     last_chunk = None
 
-        for chunk in self.client.models.generate_content_stream(
-            model="gemini-3.8-flash",
-            contents=prompt,
-            config={
-                "system_instruction": SYSTEM_PROMPT,
-                "response_mime_type": "application/json",
-                "response_schema": ChatResponse,
-                "thinking_config": {
-                    "thinking_level": "low"
-                },
-            },
-        ):
-            if chunk.text:
-                response_text += chunk.text
-                print(chunk.text, end="", flush=True)
+    #     for chunk in self.client.models.generate_content_stream(
+    #         model="gemini-3.8-flash",
+    #         contents=prompt,
+    #         config={
+    #             "system_instruction": SYSTEM_PROMPT,
+    #             "response_mime_type": "application/json",
+    #             "response_schema": ChatResponse,
+    #             "thinking_config": {
+    #                 "thinking_level": "low"
+    #             },
+    #         },
+    #     ):
+    #         if chunk.text:
+    #             response_text += chunk.text
+    #             print(chunk.text, end="", flush=True)
 
-            last_chunk = chunk
-        print("STREAMED JSON:", response_text)
-        parsed_response = ChatResponse.model_validate_json(response_text)
-        print( 'gemini call :', time.perf_counter()-start_time)
+    #         last_chunk = chunk
+    #     print("STREAMED JSON:", response_text)
+    #     parsed_response = ChatResponse.model_validate_json(response_text)
+    #     print( 'gemini call :', time.perf_counter()-start_time)
         
-        start_time = time.perf_counter()
-        if parsed_response is None:
-            print("Gemini returned no parsed response")
-            print("Finish reason:", response.candidates[0].finish_reason
-                if response.candidates else None)
-            print("Raw response:", response.text)
+    #     start_time = time.perf_counter()
+    #     if parsed_response is None:
+    #         print("Gemini returned no parsed response")
+    #         print("Finish reason:", response.candidates[0].finish_reason
+    #             if response.candidates else None)
+    #         print("Raw response:", response.text)
 
-            raise ValueError("LLM returned no valid ChatResponse")
+    #         raise ValueError("LLM returned no valid ChatResponse")
 
         
-        sources = [
-        {
-            "source": item["source"],
-            "page": item["page_nr"],
-            "url": item["url"],
-            "lines": item['lines'] 
-            #"text": item['text'],
-        }
-        for i, item in enumerate(context)
-        if i + 1 in parsed_response.relevant_contexts
-    ]
+    #     sources = [
+    #     {
+    #         "source": item["source"],
+    #         "page": item["page_nr"],
+    #         "url": item["url"],
+    #         "lines": item['lines'] 
+    #         #"text": item['text'],
+    #     }
+    #     for i, item in enumerate(context)
+    #     if i + 1 in parsed_response.relevant_contexts
+    # ]
        
-        finish_reason = None
-        if last_chunk and last_chunk.candidates:
-            reason = last_chunk.candidates[0].finish_reason
-            finish_reason = reason.name if reason else None
+    #     finish_reason = None
+    #     if last_chunk and last_chunk.candidates:
+    #         reason = last_chunk.candidates[0].finish_reason
+    #         finish_reason = reason.name if reason else None
 
-        usage = getattr(last_chunk, "usage_metadata", None)
+    #     usage = getattr(last_chunk, "usage_metadata", None)
 
-        response_meta = {
-            "model": getattr(last_chunk, "model_version", None),
-            "input_tokens": getattr(usage, "prompt_token_count", None),
-            "output_tokens": getattr(usage, "candidates_token_count", None),
-            "total_tokens": getattr(usage, "total_token_count", None),
-            "response_id": getattr(last_chunk, "response_id", None),
-            "status": finish_reason,
-            "type": "message"
-        }
+    #     response_meta = {
+    #         "model": getattr(last_chunk, "model_version", None),
+    #         "input_tokens": getattr(usage, "prompt_token_count", None),
+    #         "output_tokens": getattr(usage, "candidates_token_count", None),
+    #         "total_tokens": getattr(usage, "total_token_count", None),
+    #         "response_id": getattr(last_chunk, "response_id", None),
+    #         "status": finish_reason,
+    #         "type": "message"
+    #     }
 
-        print("returning data:", time.perf_counter() - start_time)
-        return {
-            "answer": parsed_response.answer,
-            "sources": sources,
-            "meta": {
-                "response": response_meta,
-                "embedding": embedded_query["meta"]
-            }
-        }
+    #     print("returning data:", time.perf_counter() - start_time)
+    #     return {
+    #         "answer": parsed_response.answer,
+    #         "sources": sources,
+    #         "meta": {
+    #             "response": response_meta,
+    #             "embedding": embedded_query["meta"]
+    #         }
+    #     }
 
 
 

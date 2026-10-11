@@ -72,15 +72,28 @@ async def chat(
     request_count = db.get_daily_request_count(client_ip)
 
     if request_count >= message_limit:
-        return {
-            "answer": (
+        def limit_stream():
+            message = (
                 "Unfortunately, you've reached the daily 8-question limit. "
                 "To keep the chatbot free, no further questions are available. "
                 "Thanks for chatting! 😊"
-            ),
-            "message_count": request_count,
-            "message_limit": message_limit,
-        }
+            )
+
+            yield f"data: {json.dumps({'type': 'chunk', 'text': message})}\n\n"
+
+            yield f"data: {json.dumps({
+                'type': 'done',
+                'answer': message,
+                'message_count': request_count,
+                'message_limit': message_limit,
+                'session_id': str(request.session_id) if request.session_id else None,
+                'sources': []
+            })}\n\n"
+
+            return StreamingResponse(
+                limit_stream(),
+                media_type="text/event-stream",
+            )
 
     # 3. Validate the existing session or create a new one
     session_id = (

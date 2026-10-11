@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Square } from 'lucide-react';
 import { getChatConfig } from '../../../config/configLoader';
@@ -5,7 +6,17 @@ import { getChatConfig } from '../../../config/configLoader';
 export const ChatInput = ({ input, setInput, isLoading, onSubmit, onStop, maxLength}) => {
   const chatConfig = getChatConfig();
   const placeholder = chatConfig?.inputPlaceholder || 'Ask me anything...';
-  
+  const inputRef = useRef(null);
+  const wasLoading = useRef(false);
+
+  useEffect(() => {
+    if (isLoading) {
+      wasLoading.current = true;
+    } else if (wasLoading.current) {
+      inputRef.current?.focus();
+      wasLoading.current = false;
+    }
+  }, [isLoading]);
 
   const handleChange = (e) => {
     const value = e.target.value;
@@ -29,6 +40,7 @@ export const ChatInput = ({ input, setInput, isLoading, onSubmit, onStop, maxLen
       className="flex items-center gap-3 bg-gray-800/50 p-2 rounded-xl border border-purple-500/20"
     >
       <input
+        ref={inputRef}
         type="text"
         value={input}
         onChange=  {handleChange} //.{(e) => setInput(e.target.value)}
