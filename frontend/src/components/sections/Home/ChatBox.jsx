@@ -238,7 +238,7 @@ useEffect(() => {
         <div className="relative z-10">
           <ChatInput
             input={input}
-            maxLength = {3000}
+            maxLength = {10000}
             minLength = {1}
             setInput={setInput}
             isLoading={isLoading}
