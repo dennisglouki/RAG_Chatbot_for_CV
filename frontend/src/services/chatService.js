@@ -40,8 +40,7 @@ export class ChatService {
 // }
 
 static async sendMessage(message, sessionId, slug, onToken) {
-  console.log("Chatbot slug:", slug);
-console.log("Chat request URL:", `${BACKEND_URL}/chat/${encodeURIComponent(slug)}`);
+
   const response = await fetch(
     `${BACKEND_URL}/chat/${encodeURIComponent(slug)}`,
     {
