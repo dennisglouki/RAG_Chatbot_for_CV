@@ -1,7 +1,7 @@
 from uuid import UUID
 import time
 import json
-import re
+
 
 from fastapi import FastAPI, Request, BackgroundTasks
 from pydantic import BaseModel, Field
@@ -118,7 +118,7 @@ async def chat(
         answer = None
         meta = {}
         embedding_meta = {}
-
+        start_time = time.perf_counter() 
         try:
             for event in chatbot.execute_bot_stream(
                 request.message,
@@ -168,6 +168,7 @@ async def chat(
                     duration_s=time.perf_counter() - start_time,
                     type="message",
                 )
+                print("Logging completed successfully")
     return StreamingResponse(
     generate(),
     media_type="text/event-stream",
