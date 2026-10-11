@@ -90,9 +90,9 @@ async def chat(
                 'sources': []
             })}\n\n"
 
-            return StreamingResponse(
-                limit_stream(),
-                media_type="text/event-stream",
+        return StreamingResponse(
+            limit_stream(),
+            media_type="text/event-stream",
             )
 
     # 3. Validate the existing session or create a new one

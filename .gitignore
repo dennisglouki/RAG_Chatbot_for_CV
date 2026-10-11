@@ -198,3 +198,4 @@ dist-ssr
 *./sql_statements.py
 *.zshrc
 *.bashrc
+*/.csv
