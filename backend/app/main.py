@@ -62,19 +62,14 @@ async def chat(
     request: ChatRequest,
     background_tasks: BackgroundTasks,
 ):
-    start_total = time.perf_counter()
     message_limit = 8
     client_ip = request_ip.client.host
 
     # 1. Resolve the public chatbot slug to its internal customer UUID
-    start_time = time.perf_counter()
     customer_id = db.lookup_id(slug)
-    print( 'slug lookup:', time.perf_counter()-start_time)
     # 2. Check the daily question limit
 
-    start_time = time.perf_counter()
     request_count = db.get_daily_request_count(client_ip)
-    print( 'daily request count:', time.perf_counter()-start_time)
 
     if request_count >= message_limit:
         return {
@@ -93,34 +88,24 @@ async def chat(
         if request.session_id is not None
         else None
     )
-    start_time = time.perf_counter()
     if (
         session_id is None
         or not db.validate_session(session_id, customer_id)
     ):
-        print( 'session validation:', time.perf_counter()-start_time)
-
-        start_time = time.perf_counter()
         location = db.get_location(client_ip)
 
-        print( 'location lookup:', time.perf_counter()-start_time)
         
-        start_time = time.perf_counter()
         session_id = db.create_session(
             customer_id=customer_id,
             ip_address=client_ip,
             country=location.get("country"),
             city=location.get("city"),
         )
-        print( 'create session :', time.perf_counter()-start_time)
 
     # 4. Load conversation history from PostgreSQL
-    start_time = time.perf_counter()
     history = db.get_session_history(session_id)
-    print( 'get session history:', time.perf_counter()-start_time)
 
     # 5. Generate the answer
-    start_time = time.perf_counter()
 
     # results = chatbot.execute_bot(
     #     request.message,
