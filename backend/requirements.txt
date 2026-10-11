@@ -2,7 +2,8 @@ fastapi
 uvicorn[standard]
 pydantic
 numpy
-faiss-cpu
+qdrant_client
 google-genai
 sqlalchemy
 psycopg[binary]
+psycopg[pool]

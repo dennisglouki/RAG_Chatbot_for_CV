@@ -1,22 +1,30 @@
+from uuid import UUID
+import time
+import json
+import re
+
 from fastapi import FastAPI, Request, BackgroundTasks
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
-from app.chatbot import Bot
-from collections import defaultdict
-from app.DB_communication import Database
+from fastapi.responses import StreamingResponse
 
+from app.chatbot import Bot
+from app.DB_communication import Database
 
 
 
 app = FastAPI(
     title="CV RAG Chatbot",
     description="Chat with Dennis' CV using Gemini and RAG",
-    version="0.1.0"
+    version="0.1.0",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://dennisg.onrender.com"],
+    allow_origins=[
+        "http://localhost:5173",
+        "https://dennisg.onrender.com",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -24,66 +32,211 @@ app.add_middleware(
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(  max_length=3000)
-    history: list[dict] = []
+    message: str = Field(max_length=3000)
+    session_id: UUID | None = None
 
 
 chatbot = Bot()
 db = Database()
 
 
-messages_counter = defaultdict(int)
-
-
 @app.get("/")
 def home():
-    return {
-        "message": "CV RAG chatbot is running"
-    }
+    return {"message": "CV RAG chatbot is running"}
 
 
 @app.get("/check/status")
 def status():
-    return {
-        "status": "ok"
-    }
+    return {"status": "ok"}
+
 
 @app.get("/health")
-def status():
-    return {
-        "status": "ok"
-    }
+def health():
+    return {"status": "ok"}
 
 
-@app.post("/chat")
-async def chat(request_ip: Request, request: ChatRequest, background_tasks: BackgroundTasks):
+@app.post("/chat/{slug}")
+async def chat(
+    slug: str,
+    request_ip: Request,
+    request: ChatRequest,
+    background_tasks: BackgroundTasks,
+):
+    start_total = time.perf_counter()
     message_limit = 8
     client_ip = request_ip.client.host
-    messages_counter = db.get_daily_request_count(client_ip)
 
+    # 1. Resolve the public chatbot slug to its internal customer UUID
+    start_time = time.perf_counter()
+    customer_id = db.lookup_id(slug)
+    print( 'slug lookup:', time.perf_counter()-start_time)
+    # 2. Check the daily question limit
 
+    start_time = time.perf_counter()
+    request_count = db.get_daily_request_count(client_ip)
+    print( 'daily request count:', time.perf_counter()-start_time)
 
-    if messages_counter >= message_limit:
-        results = {}
-        return {"answer": "Unfortunately, you've reached the daily 8-question limit. To keep the chatbot free, no further questions are available. Thanks for chatting! 😊", "message_count": messages_counter, 'message_limit': message_limit}
-    else:
-        results = chatbot.execute_bot(request.message, request.history, k=50)
-        answer = results["answer"]
-        sources = results["sources"] 
-        
-        if messages_counter == 2:
-            answer = "Wow, you're really curious! 😄 Let's grab a coffee instead of chatting here ☕. Reach out to me at dennisgloukhman@hotmail.de\n\n Back to your question:   " + answer
+    if request_count >= message_limit:
+        return {
+            "answer": (
+                "Unfortunately, you've reached the daily 8-question limit. "
+                "To keep the chatbot free, no further questions are available. "
+                "Thanks for chatting! 😊"
+            ),
+            "message_count": request_count,
+            "message_limit": message_limit,
+        }
 
-    meta = results.get('meta', {})
-    background_tasks.add_task(
-        db.log_request,
-        client_ip,
-        request.message,
-        answer,
-        meta
+    # 3. Validate the existing session or create a new one
+    session_id = (
+        str(request.session_id)
+        if request.session_id is not None
+        else None
     )
+    start_time = time.perf_counter()
+    if (
+        session_id is None
+        or not db.validate_session(session_id, customer_id)
+    ):
+        print( 'session validation:', time.perf_counter()-start_time)
+
+        start_time = time.perf_counter()
+        location = db.get_location(client_ip)
+
+        print( 'location lookup:', time.perf_counter()-start_time)
+        
+        start_time = time.perf_counter()
+        session_id = db.create_session(
+            customer_id=customer_id,
+            ip_address=client_ip,
+            country=location.get("country"),
+            city=location.get("city"),
+        )
+        print( 'create session :', time.perf_counter()-start_time)
+
+    # 4. Load conversation history from PostgreSQL
+    start_time = time.perf_counter()
+    history = db.get_session_history(session_id)
+    print( 'get session history:', time.perf_counter()-start_time)
+
+    # 5. Generate the answer
+    start_time = time.perf_counter()
+
+    # results = chatbot.execute_bot(
+    #     request.message,
+    #     history,
+    #     k=50,
+    #     client_id=customer_id,
+    # )
     
-    messages_counter += 1
-    return {"answer": answer, "sources": sources, "message_count": messages_counter, 'message_limit': message_limit  }
+    def generate():
+        answer = None
+        meta = {}
+        embedding_meta = {}
 
+        try:
+            for event in chatbot.execute_bot_stream(
+                request.message,
+                history,
+                k=50,
+                client_id=customer_id,
+            ):
+                if event["type"] == "done":
+                    answer = event.get("answer")
+                    meta = event.get("meta", {}).get("response", {})
+                    embedding_meta = event.get("meta", {}).get("embedding", {})
+                    embedding_meta['total_tokens'] = len(request.message.split(' '))+8
 
+                    # Send session information to the frontend
+                    event["session_id"] = session_id
+                    event["message_count"] = request_count + 1
+                    event["message_limit"] = message_limit
+
+                yield f"data: {json.dumps(event)}\n\n"
+        except Exception as e:
+            print(f"Streaming error: {e!r}")
+            import traceback
+            traceback.print_exc()
+
+            yield f"data: {json.dumps({
+                'type': 'error',
+                'message': 'Response generation failed'
+            })}\n\n"
+  
+        # Keep your existing logging code here
+        finally:
+            if answer is not None:
+                background_tasks.add_task(
+                    db.log_request,
+                    session_id=session_id,
+                    question=request.message,
+                    answer=None,
+                    meta=embedding_meta,
+                    type="embedding",
+                )
+                background_tasks.add_task(
+                    db.log_request,
+                    session_id=session_id,
+                    question=request.message,
+                    answer=answer,
+                    meta=meta,
+                    duration_s=time.perf_counter() - start_time,
+                    type="message",
+                )
+    return StreamingResponse(
+    generate(),
+    media_type="text/event-stream",
+)
+
+    # duration_s = time.perf_counter() - start_time
+
+    # print( 'geminin execute :', duration_s)
+
+    # answer = results["answer"]
+    # sources = results["sources"]
+    # meta = results.get("meta", {}).get('response', {})
+    # embedding_meta = results.get("meta", {}).get('embedding', {})
+    # embedding_meta['total_count'] = len(request.message.split())+6 
+
+    # # Preserve your existing personalized message
+    # if request_count == 2:
+    #     answer = (
+    #         "Wow, you're really curious! 😄 Let's grab a coffee instead "
+    #         "of chatting here ☕. Reach out to me at "
+    #         "dennisgloukhman@hotmail.de\n\n"
+    #         "Back to your question: " + answer
+    #     )
+
+    # start_time = time.perf_counter()
+    # # Embedding logging
+    # background_tasks.add_task(
+    #     db.log_request,
+    #     session_id=session_id,
+    #     question=request.message,
+    #     answer=None,
+    #     meta=embedding_meta,
+    #     type="embedding",
+    # )
+
+    # # LLM response logging
+    # background_tasks.add_task(
+    #     db.log_request,
+    #     session_id=session_id,
+    #     question=request.message,
+    #     answer=answer,
+    #     meta=meta,
+    #     duration_s=duration_s,
+    #     type="message",
+    # )
+
+    # print( 'background_logging :', time.perf_counter()-start_time)
+    # print( 'total time:', time.perf_counter()-start_total)
+
+    # # 7. Return the session ID for the frontend to reuse
+    # return {
+    #     "answer": answer,
+    #     "sources": sources,
+    #     "session_id": session_id,
+    #     "message_count": request_count + 1,
+    #     "message_limit": message_limit,
+    # }
