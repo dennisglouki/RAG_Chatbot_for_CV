@@ -27,20 +27,21 @@ export const useMessages = () => {
     setMessages(prev => [...prev, message]);
   };
 
-  const updateLastMessage = (content, isTyping = true) => {
-    setMessages(prev => {
-      const newMessages = [...prev];
-      if (newMessages.length > 0) {
-        const lastMessage = newMessages[newMessages.length - 1];
-        newMessages[newMessages.length - 1] = {
-          ...lastMessage,
-          content,
-          isTyping
-        };
-      }
-      return newMessages;
-    });
-  };
+const updateLastMessage = (content, isTyping = true, extra = {}) => {
+  setMessages(prev => {
+    const newMessages = [...prev];
+    if (newMessages.length > 0) {
+      const i = newMessages.length - 1;
+      newMessages[i] = {
+        ...newMessages[i],
+        content,
+        isTyping,
+        ...extra
+      };
+    }
+    return newMessages;
+  });
+};
 
   const resetMessages = () => {
     setMessages([initialMessage]);

@@ -1,30 +1,24 @@
-import { useState, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+import { useState, useCallback } from 'react';
 
 export const useSession = () => {
-  const [sessionId, setSessionId] = useState('');
+  const chatbotSlug = import.meta.env.VITE_CHATBOT_SLUG;
+  const storageKey = `chatSessionId_${chatbotSlug || 'default'}`;
 
-  useEffect(() => {
-    initializeSession();
-  }, []);
+  const [sessionId, setSessionId] = useState(
+    () => localStorage.getItem(storageKey)
+  );
 
-  const initializeSession = () => {
-    const existingSessionId = localStorage.getItem('chatSessionId');
-    if (existingSessionId) {
-      setSessionId(existingSessionId);
-    } else {
-      const newSessionId = uuidv4();
-      localStorage.setItem('chatSessionId', newSessionId);
-      setSessionId(newSessionId);
-    }
-  };
+  const updateSessionId = useCallback((newSessionId) => {
+    if (!newSessionId) return;
 
-  const startNewSession = () => {
-    const newSessionId = uuidv4();
-    localStorage.setItem('chatSessionId', newSessionId);
+    localStorage.setItem(storageKey, newSessionId);
     setSessionId(newSessionId);
-    return newSessionId;
-  };
+  }, [storageKey]);
 
-  return { sessionId, startNewSession };
-}; 
+  const startNewSession = useCallback(() => {
+    localStorage.removeItem(storageKey);
+    setSessionId(null);
+  }, [storageKey]);
+
+  return { sessionId, updateSessionId, startNewSession };
+};

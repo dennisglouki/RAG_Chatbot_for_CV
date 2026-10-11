@@ -6,9 +6,9 @@ import { TypingIndicator } from './TypingIndicator';
 
 export const ChatMessage = ({ message }) => {
   // If this is a typing message from the assistant with no content, render the standalone TypingIndicator
-  if (message.role === 'assistant' && message.isTyping && !message.content) {
-    return <TypingIndicator />;
-  }
+ if (message.role === 'assistant' && message.isTyping && !message.content) {
+  return <TypingIndicator />;
+}
 
   return (
     <motion.div
@@ -81,7 +81,6 @@ const AssistantMessage = ({ message }) => (
       {message.content}
     </ReactMarkdown>
 
-    {message.isTyping && <TypingIndicator inline />}
 
     <MessageSources sources={message.sources} />
   </div>

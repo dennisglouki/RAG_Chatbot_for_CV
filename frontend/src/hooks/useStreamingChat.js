@@ -9,57 +9,64 @@ export const useStreamingChat = () => {
   const [messageCount, setMessageCount] = useState(0)
   const [messageLimit, setMessageLimit] = useState(8)
 
-  const { sessionId, startNewSession } = useSession()
-  const { messages, addMessage, updateLastMessage, resetMessages } = useMessages()
+  const { sessionId, updateSessionId, startNewSession } = useSession()
+  const { messages, addMessage, resetMessages, updateLastMessage } = useMessages()
   const shouldStopRef = useRef(false)
+  const requestInProgressRef = useRef(false)
 
   const stopAnswering = useCallback(() => {
     shouldStopRef.current = true
   }, [])
+const sendMessage = async (chatRequest) => {
+  if (requestInProgressRef.current) return;
 
-  const sendMessage = async (chatRequest) => {
-    setIsLoading(true)
-    setError(null)
+  requestInProgressRef.current = true;
+  shouldStopRef.current = false;
+  setIsLoading(true);
+  setError(null);
 
-    try {
-      // Keep the previous conversation before adding the new question
-      const history = messages.map(({ role, content }) => ({
-        role,
-        content
-      }))
+  try {
+    addMessage({ role: 'user', content: chatRequest.message });
+    addMessage({ role: 'assistant', content: '', isTyping: true, sources: [] });
 
-      addMessage({
-        role: 'user',
-        content: chatRequest.message
-      })
+    const slug = import.meta.env.VITE_CHATBOT_SLUG;
+    if (!slug) throw new Error('VITE_CHATBOT_SLUG is not configured');
 
-      const response = await ChatService.sendMessage(
-        chatRequest.message,
-        history
-      )
+    let answer = '';
 
-      // Update question counter from backend
-      setMessageCount(response.message_count)
-      setMessageLimit(response.message_limit)
+    const response = await ChatService.sendMessage(
+      chatRequest.message,
+      sessionId,
+      slug,
+      (token) => {
+        if (shouldStopRef.current) return;
+        answer += token;
+        updateLastMessage(answer);
+      }
+    );
 
-      addMessage({
-        role: 'assistant',
-        content: response.answer,
-        sources: response.sources
-      })
+    if (response.session_id) updateSessionId(response.session_id);
 
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setIsLoading(false)
-    }
+    setMessageCount(response.message_count);
+    setMessageLimit(response.message_limit);
+
+   updateLastMessage(response.answer, false, {
+  sources: response.sources || []
+});
+  } catch (err) {
+    setError(err.message);
+  } finally {
+    requestInProgressRef.current = false;
+    setIsLoading(false);
   }
+};
 
   const startNewChat = useCallback(() => {
-    const newSessionId = startNewSession()
+    startNewSession()
     resetMessages()
     setMessageCount(0)
-    return newSessionId
+    setError(null)
+    shouldStopRef.current = false
   }, [startNewSession, resetMessages])
 
   return {

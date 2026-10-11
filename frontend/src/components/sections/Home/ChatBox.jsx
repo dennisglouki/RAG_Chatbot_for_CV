@@ -7,7 +7,25 @@ import { ChatInput } from './ChatInput';
 import { TypingIndicator } from './TypingIndicator';
 import { getPersonalInfo } from '../../../config/configLoader';
 
+
+function getOrCreateSessionId() {
+    const chatbotSlug = import.meta.env.VITE_CHATBOT_SLUG;
+    const storageKey = `chatSessionId_${chatbotSlug}`;
+
+    let sessionId = localStorage.getItem(storageKey);
+
+    if (!sessionId) {
+        sessionId = crypto.randomUUID();
+        localStorage.setItem(storageKey, sessionId);
+    }
+
+    return sessionId;
+}
+
+
+
 export const ChatBox = () => {
+  const slug = window.location.pathname.split('/').filter(Boolean)[0];
   const [input, setInput] = useState('');
   const [userEngaged, setUserEngaged] = useState(false);
   const [backendOnline, setBackendOnline] = useState(false);
@@ -56,24 +74,21 @@ useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  useEffect(() => {
-    if (!userEngaged) {
-      lastMessageCountRef.current = messages.length;
-      return;
-    }
-    if (messages.length > lastMessageCountRef.current) {
-      scrollToBottom();
-    }
-    lastMessageCountRef.current = messages.length;
-  }, [messages, userEngaged]);
-
+useEffect(() => {
+  if (userEngaged) {
+    scrollToBottom();
+  }
+}, [messages, userEngaged]);
+  
   const handleSubmit = async (message) => {
     setUserEngaged(true);
-    
+
+    const slug = import.meta.env.VITE_CHATBOT_SLUG;
     const chatRequest = {
+      slug,
       message,
       messages: messages.filter(msg => !msg.isTyping),
-      session_id: localStorage.getItem('chatSessionId') || 'default-session',
+      session_id: getOrCreateSessionId(),
       timestamp: Date.now() / 1000
     };
 
@@ -200,9 +215,7 @@ useEffect(() => {
             {messages.map((message, index) => (
               <ChatMessage key={index} message={message} />
             ))}
-            {isLoading && !messages.some(msg => msg.isTyping) && (
-              <TypingIndicator key="loading-indicator" />
-            )}
+
           </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>

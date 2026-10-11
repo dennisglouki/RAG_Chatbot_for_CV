@@ -194,3 +194,7 @@ dist-ssr
 
 # SQLite DataBase
 *.db
+*sql_statements.py
+*./sql_statements.py
+*.zshrc
+*.bashrc

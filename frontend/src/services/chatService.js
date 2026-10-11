@@ -2,116 +2,94 @@ const BACKEND_URL =
   import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
 export class ChatService {
-  static async sendMessage(message, history) {
-    const response = await fetch(`${BACKEND_URL}/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message,
-        history,
-      }),
-    });
-
-    const text = await response.text();
-
-    if (!response.ok) {
-      throw new Error(
-        `Backend error (${response.status}): ${text || 'empty response'}`
-      );
-    }
-
-    if (!text) {
-      throw new Error('Backend returned an empty response');
-    }
-
-    try {
-      return JSON.parse(text);
-    } catch {
-      throw new Error(
-        `Backend returned invalid JSON: ${text.slice(0, 200)}`
-      );
-    }
-  }
-}
-
-// const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
-
-// export class ChatService {
-//   static async handleStreamingResponse(response, callbacks) {
-//     const reader = response.body.getReader();
-//     const decoder = new TextDecoder();
-//     let fullMessage = '';
-
-//     try {
-//       while (true) {
-//         if (callbacks.shouldStop?.()) {
-//           await reader.cancel();
-//           callbacks.onComplete(fullMessage);
-//           break;
-//         }
-
-//         const { done, value } = await reader.read();
-        
-//         if (done) {
-//           callbacks.onComplete(fullMessage);
-//           break;
-//         }
-
-//         const chunk = decoder.decode(value);
-//         const lines = chunk.split('\n');
-
-//         for (const line of lines) {
-//           if (line.trim() === '') continue;
-
-//           const match = line.match(/^0:(.+)$/);
-//           if (match) {
-//             try {
-//               const content = JSON.parse(match[1]);
-//               fullMessage += content;
-//               callbacks.onChunk(fullMessage);
-//               await new Promise(resolve => setTimeout(resolve, 30));
-//             } catch (e) {
-//               console.error('Error parsing streaming response:', e);
-//             }
-//           }
-//         }
+//   static async sendMessage(message, sessionId, slug) {
+//     const response = await fetch(
+//       `${BACKEND_URL}/chat/${encodeURIComponent(slug)}`,
+//       {
+//         method: 'POST',
+//         headers: {
+//           'Content-Type': 'application/json',
+//         },
+//         body: JSON.stringify({
+//           message,
+//           session_id: sessionId || null,
+//         }),
 //       }
-//     } catch (e) {
-//       console.error('Error reading stream:', e);
-//       throw new Error('Error processing response stream');
-//     }
-//   }
+//     );
 
-//   static async handleError(response) {
-//     const errorData = await response.json();
-//     if (response.status === 429) {
-//       return {
-//         isRateLimit: true,
-//         message: errorData.friendly_message || "You've reached the rate limit. Please wait before sending more messages.",
-//         retryAfter: errorData.retry_after
-//       };
-//     }
-//     throw new Error(errorData.detail || 'Failed to send message');
-//   }
-
-//   static async sendMessage(chatRequest) {
-//     const response = await fetch(`${BACKEND_URL}/chat`, {
-//       method: 'POST',
-//       headers: {
-//         'Content-Type': 'application/json',
-//       },
-//       body: JSON.stringify({
-//         ...chatRequest,
-//         messages: chatRequest.messages.map(({ role, content }) => ({ role, content }))
-//       }),
-//     });
+//     const text = await response.text();
 
 //     if (!response.ok) {
-//       return this.handleError(response);
+//       throw new Error(
+//         `Backend error (${response.status}): ${text || 'empty response'}`
+//       );
 //     }
 
-//     return response;
+//     if (!text) {
+//       throw new Error('Backend returned an empty response');
+//     }
+
+//     try {
+//       return JSON.parse(text);
+//     } catch {
+//       throw new Error(
+//         `Backend returned invalid JSON: ${text.slice(0, 200)}`
+//       );
+//     }
 //   }
-// } 
+// }
+
+static async sendMessage(message, sessionId, slug, onToken) {
+  console.log("Chatbot slug:", slug);
+console.log("Chat request URL:", `${BACKEND_URL}/chat/${encodeURIComponent(slug)}`);
+  const response = await fetch(
+    `${BACKEND_URL}/chat/${encodeURIComponent(slug)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message,
+        session_id: sessionId || null,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Backend error (${response.status})`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let result = null;
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const events = buffer.split('\n\n');
+    buffer = events.pop();
+
+    for (const event of events) {
+      const line = event.split('\n').find(line => line.startsWith('data: '));
+      if (!line) continue;
+
+      const data = JSON.parse(line.slice(6));
+
+      if (data.type === 'token') {
+        onToken?.(data.text);
+
+      } 
+      if (data.type === 'error') {
+      throw new Error(data.message);
+      }else if (data.type === 'done') {
+        result = data;
+      }
+    }
+  }
+
+  if (!result) throw new Error('Stream ended without a final event');
+  return result;
+}
+}
