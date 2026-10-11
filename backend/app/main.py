@@ -115,6 +115,7 @@ async def chat(
     # )
     
     def generate():
+        print("1. Generator started", flush=True)
         answer = None
         meta = {}
         embedding_meta = {}
@@ -126,6 +127,7 @@ async def chat(
                 k=50,
                 client_id=customer_id,
             ):
+                print(f"2. Event type: {event['type']}", flush=True)
                 if event["type"] == "done":
                     answer = event.get("answer")
                     meta = event.get("meta", {}).get("response", {})
@@ -136,7 +138,7 @@ async def chat(
                     event["session_id"] = session_id
                     event["message_count"] = request_count + 1
                     event["message_limit"] = message_limit
-
+                    print(f"3. Answer received: {answer is not None}", flush=True)
                 yield f"data: {json.dumps(event)}\n\n"
         except Exception as e:
             print(f"Streaming error: {e!r}")
@@ -150,7 +152,10 @@ async def chat(
   
         # Keep your existing logging code here
         finally:
+            print(f"4. Finally reached. Answer exists: {answer is not None}", flush=True)
             if answer is not None:
+                print("5. Starting DB logging", flush=True)
+
                 background_tasks.add_task(
                     db.log_request,
                     session_id=session_id,
@@ -168,7 +173,7 @@ async def chat(
                     duration_s=time.perf_counter() - start_time,
                     type="message",
                 )
-                print("Logging completed successfully")
+                print("6 Logging completed successfully")
     return StreamingResponse(
     generate(),
     media_type="text/event-stream",
