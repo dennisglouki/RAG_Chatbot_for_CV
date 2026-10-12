@@ -199,3 +199,4 @@ dist-ssr
 *.zshrc
 *.bashrc
 */.csv
+backend/app/google-cloud-sdk/
