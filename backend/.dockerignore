@@ -1,0 +1,24 @@
+# Python environments and cache
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Notebooks and development files
+*.ipynb
+.DS_Store
+
+# Git metadata
+.git/
+
+# Tests and local tooling
+.pytest_cache/
+.mypy_cache/
+app/sql_statements.py
