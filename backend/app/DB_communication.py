@@ -223,3 +223,27 @@ class Database:
             status=meta.get("status", "completed"),
             type=type,
         )
+
+    
+    def consume_quota(self, quota_type: str, daily_limit: int) -> bool:
+        with self.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO daily_global_quota
+                        (quota_date, quota_type, request_count)
+                    VALUES (CURRENT_DATE, %s, 1)
+                    ON CONFLICT (quota_date, quota_type)
+                    DO UPDATE SET
+                        request_count =
+                            daily_global_quota.request_count + 1
+                    WHERE daily_global_quota.request_count < %s
+                    RETURNING request_count
+                    """,
+                    (quota_type, daily_limit),
+                )
+                allowed = cur.fetchone() is not None
+
+            conn.commit()
+
+        return allowed

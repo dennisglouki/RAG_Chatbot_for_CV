@@ -3,13 +3,18 @@ import time
 import json
 
 
-from fastapi import FastAPI, Request, BackgroundTasks
+from fastapi import FastAPI, Request, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 
 from app.chatbot import Bot
 from app.DB_communication import Database
+
+GLOBAL_HTTP_DAILY_LIMIT = 5000
+
+db = Database()
+chatbot = Bot()
 
 
 
@@ -29,15 +34,28 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+@app.middleware("http")
+async def global_http_request_limit(request: Request, call_next):
+    allowed = db.consume_quota(
+        "http",
+        GLOBAL_HTTP_DAILY_LIMIT,
+    )
+
+    if not allowed:
+        return JSONResponse(
+            status_code=429,
+            content={
+                "detail": "Global daily HTTP request limit reached."
+            },
+        )
+
+    return await call_next(request)
 
 
 class ChatRequest(BaseModel):
     message: str = Field(max_length=10000)
     session_id: UUID | None = None
 
-
-chatbot = Bot()
-db = Database()
 
 
 @app.get("/")
@@ -62,6 +80,7 @@ async def chat(
     request: ChatRequest,
     background_tasks: BackgroundTasks,
 ):
+
     message_limit = 8
     client_ip = request_ip.client.host
 
@@ -126,6 +145,11 @@ async def chat(
     #     k=50,
     #     client_id=customer_id,
     # )
+
+    if not db.consume_quota("gemini", 1000):
+        raise HTTPException(
+        status_code=429,
+        detail="Overall daily chatbot request limit reached.")
     
     def generate():
         answer = None
