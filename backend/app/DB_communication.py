@@ -134,7 +134,9 @@ class Database:
                     WHERE session_id = %s
                         AND type = 'message'
                       AND answer IS NOT NULL
-                    ORDER BY created_at, id
+                    ORDER BY created_at ASC, id 
+                    limit 10"
+                        
                     """,
                     (session_id,),
                 )

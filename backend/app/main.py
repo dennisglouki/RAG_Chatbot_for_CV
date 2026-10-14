@@ -6,6 +6,7 @@ import json
 from fastapi import FastAPI, Request, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware import RequestBodySizeLimitMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 
 from app.chatbot import Bot
@@ -34,22 +35,33 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(
+    RequestBodySizeLimitMiddleware,
+    max_body_size=2 * 1024 * 1024,  # 2 MiB
+)
+
 @app.middleware("http")
 async def global_http_request_limit(request: Request, call_next):
-    allowed = db.consume_quota(
-        "http",
-        GLOBAL_HTTP_DAILY_LIMIT,
-    )
+    HEALTH_PATHS = {"/health", "/check/status"}
 
-    if not allowed:
-        return JSONResponse(
-            status_code=429,
-            content={
-                "detail": "Global daily HTTP request limit reached."
-            },
+    # Health checks must not consume the global daily HTTP quota
+    if request.url.path not in HEALTH_PATHS:
+        allowed = db.consume_quota(
+            "http",
+            GLOBAL_HTTP_DAILY_LIMIT,
         )
 
+        if not allowed:
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "detail": "Global daily HTTP request limit reached."
+                },
+            )
+
     return await call_next(request)
+
 
 
 class ChatRequest(BaseModel):
