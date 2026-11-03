@@ -6,7 +6,6 @@ import json
 from fastapi import FastAPI, Request, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware import RequestBodySizeLimitMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 
 from app.chatbot import Bot
@@ -36,10 +35,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(
-    RequestBodySizeLimitMiddleware,
-    max_body_size=2 * 1024 * 1024,  # 2 MiB
-)
 
 @app.middleware("http")
 async def global_http_request_limit(request: Request, call_next):
@@ -60,6 +55,21 @@ async def global_http_request_limit(request: Request, call_next):
                 },
             )
 
+    return await call_next(request)
+
+# Set your maximum allowed body size in bytes (e.g., 2 MiB = 2 * 1024 * 1024)
+MAX_BODY_SIZE = 2 * 1024 * 1024
+
+@app.middleware("http")
+async def limit_request_size(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    
+    if content_length and int(content_length) > MAX_BODY_SIZE:
+        return JSONResponse(
+            status_code=413,  # HTTP 413 Request Entity Too Large
+            content={"detail": "Request body size exceeds the allowed limit (2 MiB)."},
+        )
+        
     return await call_next(request)
 
 
