@@ -135,7 +135,7 @@ class Database:
                         AND type = 'message'
                       AND answer IS NOT NULL
                     ORDER BY created_at ASC, id 
-                    limit 10"
+                    limit 10
                         
                     """,
                     (session_id,),
